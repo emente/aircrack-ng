@@ -4793,7 +4793,7 @@ static int dump_write_json(void)
 		if (G.num_cards > 1) {
 			fprintf(G.f_json, " \"powers\":{");
 			powers_count = 0;
-			for (i=0;i<G.num_cards;i++) {
+			for (i=1;i<=G.num_cards;i++) {
 				if (ap_cur->powers[i] != -1) {
 					if (powers_count++>0) fprintf(G.f_json,",");
 					fprintf(G.f_json, "\"%s\":%d", G.ifnames[i] , ap_cur->powers[i]);
@@ -4816,7 +4816,7 @@ static int dump_write_json(void)
 					"\"max-spd\":\"%.6f\","
 					"\"best-lat\":\"%.6f\","
 					"\"best-lon\":\"%.6f\","
-					"\"best-alt\":\"%.6f\",",
+					"\"best-alt\":\"%.6f\"}",
 					ap_cur->gps_loc_min[0],
 					ap_cur->gps_loc_min[1],
 					ap_cur->gps_loc_min[2],
@@ -4937,7 +4937,7 @@ static int dump_write_json(void)
 		if (G.num_cards > 1) {
 			fprintf(G.f_json, "\"powers\":{");
 			powers_count=0;
-			for (i=0;i<G.num_cards;i++) {
+			for (i=1;i<=G.num_cards;i++) {
 				if (st_cur->powers[i] != -1) {
 					if (powers_count++>0)
 						fprintf(G.f_json, ",");
@@ -4962,7 +4962,7 @@ static int dump_write_json(void)
 					"\"max-spd\":\"%.6f\","
 					"\"best-lat\":\"%.6f\","
 					"\"best-lon\":\"%.6f\","
-					"\"best-alt\":\"%.6f\",",
+					"\"best-alt\":\"%.6f\"}",
 					st_cur->gps_loc_min[0],
 					st_cur->gps_loc_min[1],
 					st_cur->gps_loc_min[2],
@@ -5038,7 +5038,7 @@ static int dump_write_json(void)
 		if (G.num_cards > 1) {
 				fprintf(G.f_json, "\"powers\":{"); 
 				powers_count=0;
-				for (i=0;i<G.num_cards;i++) {
+				for (i=1;i<=G.num_cards;i++) {
 					if (na_cur->powers[i] != -1) {
 						if (powers_count++>0) 
 							fprintf(G.f_json, ",");
