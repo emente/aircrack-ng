@@ -724,6 +724,7 @@ char usage[] =
 	"                              are received (Default: 120 seconds)\n"
 	"      -r             <file> : Read packets from that file\n"
 	"      -x            <msecs> : Active Scanning Simulation\n"
+	"      -X             <secs> : Dont write stuff older than x seconds\n"
 	"      --manufacturer        : Display manufacturer from IEEE OUI list\n"
 	"      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 	"      --wps                 : Display WPS information (if any)\n"
@@ -4671,7 +4672,7 @@ static int dump_write_json(void)
 			continue;
 		}
 
-		if (G.is_berlin && time(NULL) - ap_cur->tlast > G.berlin)
+		if (G.file_retain!= 0 && time(NULL) - ap_cur->tlast > G.file_retain)
 		{
 			ap_cur = ap_cur->next;
 			continue;
@@ -4707,8 +4708,8 @@ static int dump_write_json(void)
 				"\"manu\":\"%s\", ",
 				ap_cur->manuf);
 
-		fprintf(G.f_json, "\"firstseen\":%ld, ", ap_cur->tinit);
-		fprintf(G.f_json, "\"lastseen\":%ld, ", ap_cur->tlast);
+		fprintf(G.f_json, "\"first\":%ld, ", ap_cur->tinit);
+		fprintf(G.f_json, "\"last\":%ld, ", ap_cur->tlast);
 
 		fprintf(G.f_json, "\"channel\":%2d, \"max_speed\":%3d,", ap_cur->channel, ap_cur->max_speed);
 
@@ -4796,7 +4797,7 @@ static int dump_write_json(void)
 			for (i=1;i<=G.num_cards;i++) {
 				if (ap_cur->powers[i] != -1) {
 					if (powers_count++>0) fprintf(G.f_json,",");
-					fprintf(G.f_json, "\"%s\":%d", G.ifnames[i] , ap_cur->powers[i]);
+					fprintf(G.f_json, "\"%d\":%d", i , ap_cur->powers[i]);
 				}
 			}
 			fprintf(G.f_json, "}");
@@ -4837,7 +4838,7 @@ static int dump_write_json(void)
 	fprintf(G.f_json, "],\r\n");
 
 
-   /* ouput stations */
+   /* output stations */
 
 	fprintf(G.f_json,
 			"\"st\":[");
@@ -4855,7 +4856,7 @@ static int dump_write_json(void)
 			continue;
 		}
 
-		if (G.is_berlin && time(NULL) - st_cur->tlast > G.berlin)
+		if (G.file_retain!=0 && time(NULL) - st_cur->tlast > G.file_retain)
 		{
 			st_cur = st_cur->next;
 			continue;
@@ -4880,19 +4881,20 @@ static int dump_write_json(void)
 		fprintf(G.f_json, "\"first\":%ld, ", st_cur->tinit);
 		fprintf(G.f_json, "\"last\":%ld, ", st_cur->tlast);
 
-		fprintf(G.f_json, "\"bssid\":\"");
-		if (!memcmp(ap_cur->bssid, BROADCAST, 6))
-			fprintf(G.f_json, "/notassoc/ ,");
-		else
+		fprintf(G.f_json, "\"bssid\":");
+		if (!memcmp(ap_cur->bssid, BROADCAST, 6)) {
+			fprintf(G.f_json, "null");
+		} else {
 			fprintf(G.f_json,
-					"%02X:%02X:%02X:%02X:%02X:%02X,",
+					"\"%02X:%02X:%02X:%02X:%02X:%02X\"",
 					ap_cur->bssid[0],
 					ap_cur->bssid[1],
 					ap_cur->bssid[2],
 					ap_cur->bssid[3],
 					ap_cur->bssid[4],
 					ap_cur->bssid[5]);
-		fprintf(G.f_json,"\",\"probes\":\"");
+		}
+		fprintf(G.f_json,",\"probes\":[");
 
 		probes_written = 0;
 		for (i = 0, n = 0; i < NB_PRB; i++)
@@ -4911,22 +4913,22 @@ static int dump_write_json(void)
 										   st_cur->ssid_length[i]);
 			}
 
-			if (probes_written == 0)
+			if (probes_written++ == 0)
 			{
-				fprintf(G.f_json, "%s", temp);
-				probes_written = 1;
+				fprintf(G.f_json, "\"%s\"", temp);
 			}
 			else
 			{
-				fprintf(G.f_json, ",%s", temp);
+				fprintf(G.f_json, ",\"%s\"", temp);
 			}
 
 			free(temp);
 		}
-		fprintf(G.f_json, "\",");
+		fprintf(G.f_json, "],");
 
 		fprintf(G.f_json,
-				"\"missed\":%d, \"lastseq\":%u, \"best_power\":%d, \"rate_to\":%d, \"rate_from\":%d, \"no_packets\":%lu, ",
+				"\"channel\":%d, \"missed\":%d, \"lastseq\":%u, \"best_power\":%d, \"rate_to\":%d, \"rate_from\":%d, \"no_packets\":%lu, ",
+				st_cur->channel,
 				st_cur->missed, 
 				st_cur->lastseq, 
 				st_cur->best_power, 
@@ -4941,7 +4943,7 @@ static int dump_write_json(void)
 				if (st_cur->powers[i] != -1) {
 					if (powers_count++>0)
 						fprintf(G.f_json, ",");
-					fprintf(G.f_json, "\"%s\":%d", G.ifnames[i] , st_cur->powers[i]);
+					fprintf(G.f_json, "\"%d\":%d", i, st_cur->powers[i]);
 				}
 			}
 			fprintf(G.f_json, "}");
@@ -4998,7 +5000,7 @@ static int dump_write_json(void)
 			continue;		
 		}
 
-		if (G.is_berlin && time(NULL) - na_cur->tlast > G.berlin)
+		if (G.file_retain!=0 && time(NULL) - na_cur->tlast > G.file_retain)
 		{
 			na_cur = na_cur->next;
 			continue;
@@ -5042,7 +5044,7 @@ static int dump_write_json(void)
 					if (na_cur->powers[i] != -1) {
 						if (powers_count++>0) 
 							fprintf(G.f_json, ",");
-						fprintf(G.f_json, "\"%s\":%d", G.ifnames[i] , na_cur->powers[i]);
+						fprintf(G.f_json, "\"%d\":%d", i , na_cur->powers[i]);
 					}
 				}
 				fprintf(G.f_json, "}");
@@ -7580,6 +7582,7 @@ int main(int argc, char *argv[])
 	G.update_s = 0;
 	G.decloak = 1;
 	G.is_berlin = 0;
+	G.file_retain = 0;
 	G.numaps = 0;
 	G.maxnumaps = 0;
 	G.berlin = 120;
@@ -7704,7 +7707,7 @@ int main(int argc, char *argv[])
 
 		option = getopt_long(argc,
 							 argv,
-							 "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:WK:",
+							 "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:WK:X:",
 							 long_options,
 							 &option_index);
 
@@ -8214,6 +8217,10 @@ int main(int argc, char *argv[])
 								  _RC));
 				return (1);
 
+			case 'X':
+				G.file_retain = atoi(optarg);
+				break;
+
 			case 'x':
 
 				G.active_scan_sim = atoi(optarg);
@@ -8482,9 +8489,6 @@ int main(int argc, char *argv[])
 
 	/* open or create the output files */
 
-	if (G.record_data)
-		if (dump_initialize(G.dump_prefix, ivs_only)) return (1);
-
 	signal(SIGINT, sighandler);
 	signal(SIGSEGV, sighandler);
 	signal(SIGTERM, sighandler);
@@ -8563,15 +8567,29 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		if (time(NULL) - tt1 >= G.file_write_interval)
+		if (G.record_data && time(NULL) - tt1 >= G.file_write_interval)
 		{
 			/* update the text output files */
-
 			tt1 = time(NULL);
-			if (G.output_format_json) dump_write_json();
+
+			if (dump_initialize(G.dump_prefix, ivs_only)) 
+				return (1);
+			
 			if (G.output_format_csv) dump_write_csv();
+			if (G.output_format_json) dump_write_json();
 			if (G.output_format_kismet_csv) dump_write_kismet_csv();
 			if (G.output_format_kismet_netxml) dump_write_kismet_netxml();
+
+			if (G.output_format_csv || G.f_txt != NULL) fclose(G.f_txt);
+			if (G.output_format_json || G.f_json != NULL) fclose(G.f_json);
+			if (G.output_format_kismet_csv || G.f_kis != NULL) fclose(G.f_kis);
+			if (G.output_format_kismet_netxml || G.f_kis_xml != NULL)
+			{
+				fclose(G.f_kis_xml);
+			}
+			if (G.f_gps != NULL) fclose(G.f_gps);
+			if (G.output_format_pcap || G.f_cap != NULL) fclose(G.f_cap);
+			if (G.f_ivs != NULL) fclose(G.f_ivs);
 		}
 
 		if (time(NULL) - tt2 > 5)
@@ -8885,29 +8903,12 @@ int main(int argc, char *argv[])
 #endif
 
 	for (i = 0; i < G.num_cards; i++) wi_close(wi[i]);
-	for (i = 0; i < G.num_cards; i++)
+	for (i = 0; i <= G.num_cards; i++)
 		if (G.ifnames[i])
 			free(G.ifnames[i]);
 
-	if (G.record_data)
-	{
-		if (G.output_format_csv) dump_write_csv();
-		if (G.output_format_json) dump_write_json();
-		if (G.output_format_kismet_csv) dump_write_kismet_csv();
-		if (G.output_format_kismet_netxml) dump_write_kismet_netxml();
-
-		if (G.output_format_csv || G.f_txt != NULL) fclose(G.f_txt);
-		if (G.output_format_json || G.f_json != NULL) fclose(G.f_json);
-		if (G.output_format_kismet_csv || G.f_kis != NULL) fclose(G.f_kis);
-		if (G.output_format_kismet_netxml || G.f_kis_xml != NULL)
-		{
-			fclose(G.f_kis_xml);
-			free(G.airodump_start_time);
-		}
-		if (G.f_gps != NULL) fclose(G.f_gps);
-		if (G.output_format_pcap || G.f_cap != NULL) fclose(G.f_cap);
-		if (G.f_ivs != NULL) fclose(G.f_ivs);
-	}
+	if (G.airodump_start_time)
+		free(G.airodump_start_time);
 
 	if (!G.save_gps)
 	{

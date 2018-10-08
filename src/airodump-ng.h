@@ -462,6 +462,7 @@ struct globals
      * wasn't enough, so we decided to create a new option to change that timeout.
      * We implemented this option in the highest tower (TV Tower) of Berlin, eating an ice.
      */
+	int file_retain;
 
 	int show_ap;
 	int show_sta;
